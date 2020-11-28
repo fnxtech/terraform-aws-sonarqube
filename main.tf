@@ -43,7 +43,7 @@ module "ecs_fargate" {
   private_subnets_ids          = var.private_subnets_ids
   container_name               = "${var.name_prefix}-sonar"
   container_image              = "sonarqube:lts"
-  container_cpu                = 1000
+  container_cpu                = 1024
   container_memory             = 8192
   container_memory_reservation = 4096
   lb_http_ports = {
