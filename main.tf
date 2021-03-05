@@ -46,13 +46,16 @@ module "ecs_fargate" {
   container_cpu                = 4096
   container_memory             = 8192
   container_memory_reservation = 4096
-  lb_http_ports = {
+  lb_https_ports = {
     default = {
-      listener_port     = 80
+      listener_port     = 443
       target_group_port = 9000
     }
   }
-  lb_https_ports = {}
+  
+  default_certificate_arn = var.https_acm_cert_arn
+  lb_https_ingress_cidr_blocks = var.lb_https_ingress_cidr_blocks
+
   command = [
     "-Dsonar.search.javaAdditionalOpts=-Dnode.store.allow_mmapfs=false"
   ]

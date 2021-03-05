@@ -61,3 +61,15 @@ variable "db_password" {
   description = "DB password"
 }
 
+variable "https_acm_cert_arn" {
+  type = string
+  default = ""
+  description = "arn of acm certificate to use to enable https"
+}
+
+variable "lb_https_ingress_cidr_blocks" {
+  type = list(string)
+  description = "list of cidr blocks to whitelist to the lb"
+  default = []
+}
+
