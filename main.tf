@@ -46,13 +46,14 @@ module "ecs_fargate" {
   container_cpu                = 1024
   container_memory             = 8192
   container_memory_reservation = 4096
+  lb_http_ports = {}
   lb_https_ports = {
     default = {
       listener_port     = 443
       target_group_port = 9000
     }
   }
-  
+
   default_certificate_arn = var.https_acm_cert_arn
   lb_https_ingress_cidr_blocks = var.lb_https_ingress_cidr_blocks
 
