@@ -33,8 +33,7 @@ module aws_cw_logs {
 # ECS Fargate Service
 #------------------------------------------------------------------------------
 module "ecs_fargate" {
-  source  = "cn-terraform/ecs-fargate/aws"
-  version = "2.0.22"
+  source  = "git@github.com:mo-hit/terraform-aws-ecs-fargate.git"
   # source = "../terraform-aws-ecs-fargate"
 
   name_prefix                  = "${var.name_prefix}-sonar"
@@ -46,16 +45,6 @@ module "ecs_fargate" {
   container_cpu                = 1024
   container_memory             = 8192
   container_memory_reservation = 4096
-  lb_http_ports = {}
-  lb_https_ports = {
-    default = {
-      listener_port     = 443
-      target_group_port = 9000
-    }
-  }
-
-  default_certificate_arn = var.https_acm_cert_arn
-  lb_https_ingress_cidr_blocks = var.lb_https_ingress_cidr_blocks
 
   command = [
     "-Dsonar.search.javaAdditionalOpts=-Dnode.store.allow_mmapfs=false"
@@ -96,5 +85,56 @@ module "ecs_fargate" {
       "awslogs-stream-prefix" = "ecs"
     }
     secretOptions = null
+  }
+}
+
+resource "aws_security_group" "lb_access_sg" {
+  name        = "${var.name_prefix}-lb-access-sg"
+  description = "Controls access to the Load Balancer"
+  vpc_id      = var.vpc_id
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${var.name_prefix}-lb-access-sg"
+  }
+}
+
+resource "aws_security_group_rule" "ingress_through_https" {
+  for_each          = var.https_ports
+  security_group_id = aws_security_group.lb_access_sg.id
+  type              = "ingress"
+  from_port         = each.value.listener_port
+  to_port           = each.value.listener_port
+  protocol          = "tcp"
+  cidr_blocks       = var.https_ingress_cidr_blocks
+  prefix_list_ids   = var.https_ingress_prefix_list_ids
+}
+
+resource "aws_lb" "lb" {
+  name                             = "fnx-sonar-lb"
+  internal                         = false
+  load_balancer_type               = "application"
+  drop_invalid_header_fields       = var.drop_invalid_header_fields
+  subnets                          = var.internal ? var.private_subnets : var.public_subnets
+  idle_timeout                     = var.idle_timeout
+  enable_deletion_protection       = var.enable_deletion_protection
+  enable_cross_zone_load_balancing = var.enable_cross_zone_load_balancing
+  enable_http2                     = var.enable_http2
+  ip_address_type                  = var.ip_address_type
+  security_groups = compact(
+    concat(var.security_groups, [aws_security_group.lb_access_sg.id]),
+  )
+
+  access_logs {
+    bucket  = aws_s3_bucket.logs.id
+    enabled = true
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-lb"
   }
 }
